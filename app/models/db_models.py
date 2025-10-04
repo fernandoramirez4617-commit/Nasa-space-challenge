@@ -1,12 +1,14 @@
 from sqlalchemy import Column, Integer, Float, String, Date, DateTime, func
 from app.db.session import Base
 
+from sqlalchemy import Column, Integer, Float, String, Date, DateTime, func
+from app.db.session import Base
+
 class Game(Base):
     __tablename__ = "game"
 
     id = Column(Integer, primary_key=True, index=True)
 
-    # Estado del juego
     dia = Column(Integer, default=0)
     agua = Column(Float, default=50.0)
     consumo = Column(Float, default=5.0)
@@ -16,10 +18,13 @@ class Game(Base):
     racha_buena = Column(Integer, default=0)
     nivel = Column(Integer, default=1)
 
-    # NUEVO: ubicación y fecha “actual” del juego
     lat = Column(Float, nullable=True)
     lon = Column(Float, nullable=True)
-    fecha = Column(Date, nullable=True)  # fecha simulada del día
+    fecha = Column(Date, nullable=True)
+
+    # 👇 Nuevo: tipo de cultivo actual
+    cultivo = Column(String(32), default="trigo")  # por defecto trigo
+
 
 class DayLog(Base):
     __tablename__ = "day_log"

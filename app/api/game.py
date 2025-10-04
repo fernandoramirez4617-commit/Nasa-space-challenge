@@ -1,8 +1,10 @@
+# app/api/game.py
+from typing import Optional, Dict
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from datetime import date, datetime
-
 import random
+
 from app.db.session import get_db
 from app.db import crud
 from app.models.db_models import Game
@@ -13,10 +15,9 @@ from app.services.power import fetch_daily
 
 router = APIRouter(prefix="/campo", tags=["campo"])
 
-# Probabilidad de evento aleatorio
 AZAR_EVENTOS = 0.2
 
-def evento_aleatorio() -> dict | None:
+def evento_aleatorio():
     if random.random() > AZAR_EVENTOS:
         return None
     return random.choice([
@@ -26,7 +27,6 @@ def evento_aleatorio() -> dict | None:
         {"mensaje":"Fuga en manguera: pierdes 1 moneda 💧", "delta_agua": -1, "delta_puntos": 0, "delta_monedas": -1},
     ])
 
-# -------- setup/estado --------
 @router.post("/nuevo")
 def nuevo_juego(db: Session = Depends(get_db)):
     game = crud.reset_game(db, consumo=5.0)
@@ -84,13 +84,11 @@ def ver_historial(db: Session = Depends(get_db)):
         for l in reversed(logs)
     ]}
 
-# -------- jugar manual --------
 @router.post("/avanzar")
 def avanzar(dia: Dia, db: Session = Depends(get_db)):
     game = crud.ensure_game(db)
     return _tick(game, db, lluvia=dia.lluvia, riego=dia.riego)
 
-# -------- jugar automático con NASA POWER --------
 @router.post("/avanzar_auto")
 def avanzar_auto(db: Session = Depends(get_db)):
     game = crud.ensure_game(db)
@@ -99,24 +97,18 @@ def avanzar_auto(db: Session = Depends(get_db)):
     if game.fecha is None:
         game.fecha = date.today()
 
-    # Traer clima real del día actual
     clima = fetch_daily(game.lat, game.lon, game.fecha)
     lluvia = float(clima.get("precip_mm", 0.0))
     et0 = float(clima.get("et0_mm", game.consumo))
-    # Ajustamos consumo a ET0 del día (limitado a 2..8)
     game.consumo = max(2.0, min(8.0, et0))
 
-    # Registrar tick (sin riego, o puedes poner estrategia simple)
     res = _tick(game, db, lluvia=lluvia, riego=0.0, info_extra={"et0": et0})
-
-    # Pasar a la siguiente fecha
     crud.next_date(db)
     res["info_clima"] = {"lluvia_mm": lluvia, "et0_mm": et0, "fecha": str(game.fecha)}
     return res
 
-# -------- helpers internos --------
-def _tick(game: Game, db: Session, lluvia: float, riego: float, info_extra: dict | None = None):
-    # avanzar día y actualizar agua
+# ---------- helpers ----------
+def _tick(game: Game, db: Session, lluvia: float, riego: float, info_extra: Optional[Dict] = None):
     game.dia += 1
     game.agua = update_water(game.agua, riego, lluvia, game.consumo)
 
@@ -134,7 +126,6 @@ def _tick(game: Game, db: Session, lluvia: float, riego: float, info_extra: dict
     if subida:
         mensajes.append(subida)
 
-    # persistir y log
     crud.update_game(db, game)
     crud.add_daylog(
         db,
@@ -148,7 +139,7 @@ def _tick(game: Game, db: Session, lluvia: float, riego: float, info_extra: dict
         "resumen": {
             "dia": game.dia, "riego": riego, "lluvia": lluvia,
             "agua": round(game.agua, 1), "situacion": situacion,
-            "puntos": game.puntos, "monedas": game.monedas,
+            "puntos": game.puntos, "monedas": game.monedas
         },
         "tip": tip_by_status(situacion)
     }
