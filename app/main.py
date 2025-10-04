@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from app.api import game
 from app.db.session import Base, engine
+from app.api import missions, store
 
 # Crear tablas al arrancar
 Base.metadata.create_all(bind=engine)
@@ -15,6 +16,8 @@ app = FastAPI(
 )
 
 app.include_router(game.router)
+app.include_router(missions.router)
+app.include_router(store.router)
 
 @app.get("/", response_class=HTMLResponse)
 def portada():
