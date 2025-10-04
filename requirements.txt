@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+pydantic
+sqlalchemy
+psycopg2-binary
+alembic
+numpy
+pandas
+xarray
+rasterio
+rioxarray
+geopandas
+requests
